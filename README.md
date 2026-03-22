@@ -75,7 +75,7 @@ Save the `AccessKeyId` and `SecretAccessKey` from the output — you will need t
 Your sender email must be [verified in SES](https://docs.aws.amazon.com/ses/latest/dg/verify-addresses-and-domains.html):
 
 ```bash
-aws ses verify-email-identity --email-address your-email@example.com --region us-east-2
+aws ses verify-email-identity --email-address your-email@example.com --region your-region
 ```
 
 Check your inbox and click the verification link.
@@ -122,7 +122,7 @@ To use this skill in Claude Cowork, store your SES credentials in the project di
 [default]
 aws_access_key_id = YOUR_ACCESS_KEY_ID
 aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
-region = us-east-2
+region = your-region
 ```
 
 **2. Create or update `.claude/settings.json` in your project:**
@@ -132,7 +132,7 @@ region = us-east-2
   "env": {
     "AWS_SHARED_CREDENTIALS_FILE": ".aws/credentials",
     "SES_FROM_ADDRESS": "your-email@example.com",
-    "SES_AWS_REGION": "us-east-2"
+    "SES_AWS_REGION": "your-region"
   }
 }
 ```
@@ -190,7 +190,7 @@ After completing the [AWS Setup](#aws-setup) steps above, configure a named AWS 
 aws configure --profile ses-mailer
 ```
 
-Enter the `AccessKeyId`, `SecretAccessKey`, and region (`us-east-2`) when prompted.
+Enter the `AccessKeyId`, `SecretAccessKey`, and your SES region when prompted.
 
 > This ensures OpenClaw only uses the restricted SES-only profile, never your admin credentials.
 
@@ -205,7 +205,7 @@ Add the following to your `~/.openclaw/openclaw.json` (create the file if it doe
       "aws-ses-mailer": {
         "env": {
           "SES_FROM_ADDRESS": "your-email@example.com",
-          "SES_AWS_REGION": "us-east-2",
+          "SES_AWS_REGION": "your-region",
           "AWS_PROFILE": "ses-mailer"
         }
       }
