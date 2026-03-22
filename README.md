@@ -19,8 +19,77 @@ Supports plain text, HTML, CC/BCC, reply-to, sender display name, file attachmen
 
 - [AWS CLI](https://aws.amazon.com/cli/) installed and configured
 - [Python 3](https://www.python.org/) installed
-- AWS SES with a [verified sender identity](https://docs.aws.amazon.com/ses/latest/dg/verify-addresses-and-domains.html)
-- IAM permissions: `ses:SendEmail`, `ses:SendRawEmail`, `ses:GetIdentityVerificationAttributes`
+- An AWS account with SES configured
+
+## AWS Setup
+
+Before using this skill, create a dedicated IAM user with minimal SES permissions.
+
+### 1. Create an IAM user
+
+```bash
+aws iam create-user --user-name ses-mailer-user
+```
+
+### 2. Attach a SES-only policy
+
+Create a file called `ses-policy.json`:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowSESSend",
+      "Effect": "Allow",
+      "Action": [
+        "ses:SendEmail",
+        "ses:SendRawEmail",
+        "ses:GetIdentityVerificationAttributes"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+Attach it:
+
+```bash
+aws iam put-user-policy \
+  --user-name ses-mailer-user \
+  --policy-name SES-SendOnly \
+  --policy-document file://ses-policy.json
+```
+
+### 3. Create access keys
+
+```bash
+aws iam create-access-key --user-name ses-mailer-user
+```
+
+Save the `AccessKeyId` and `SecretAccessKey` from the output — you will need them below.
+
+### 4. Verify a sender email in SES
+
+Your sender email must be [verified in SES](https://docs.aws.amazon.com/ses/latest/dg/verify-addresses-and-domains.html):
+
+```bash
+aws ses verify-email-identity --email-address your-email@example.com --region us-east-2
+```
+
+Check your inbox and click the verification link.
+
+> **Note:** If your SES account is in [sandbox mode](https://docs.aws.amazon.com/ses/latest/dg/request-production-access.html), both sender and recipient must be verified.
+
+### 5. Security
+
+**Never commit AWS credentials to version control.** Add the following to your `.gitignore`:
+
+```
+.aws/
+.env
+```
 
 ## Claude Cowork
 
@@ -43,14 +112,47 @@ cp -r aws-ses-mailer-skill/aws-ses-mailer/skills/aws-ses-mailer ~/.claude/skills
 cp -r aws-ses-mailer-skill/aws-ses-mailer/scripts ~/.claude/skills/aws-ses-mailer/scripts
 ```
 
-### Configuration
+### Project Setup
 
-Set environment variables before starting Claude Cowork:
+To use this skill in Claude Cowork, store your SES credentials in the project directory so Cowork's sandbox can access them.
 
-```bash
-export SES_FROM_ADDRESS="sender@example.com"
-export SES_AWS_REGION="eu-west-1"
-export AWS_PROFILE="my-profile"  # optional
+**1. Create `.aws/credentials` in your project:**
+
+```
+[default]
+aws_access_key_id = YOUR_ACCESS_KEY_ID
+aws_secret_access_key = YOUR_SECRET_ACCESS_KEY
+region = us-east-2
+```
+
+**2. Create or update `.claude/settings.json` in your project:**
+
+```json
+{
+  "env": {
+    "AWS_SHARED_CREDENTIALS_FILE": ".aws/credentials",
+    "SES_FROM_ADDRESS": "your-email@example.com",
+    "SES_AWS_REGION": "us-east-2"
+  }
+}
+```
+
+**3. Add `.aws/` to your `.gitignore`:**
+
+```
+.aws/
+```
+
+Your project structure should look like:
+
+```
+my-project/
+├── .aws/
+│   └── credentials
+├── .claude/
+│   └── settings.json
+├── .gitignore
+└── ...
 ```
 
 ### Usage
@@ -65,18 +167,36 @@ Once installed, the skill is auto-discovered. Ask Claude to send an email:
 
 ## OpenClaw
 
-### Installation
-
-Copy the skill into your OpenClaw skills directory:
+### 1. Install the skill
 
 ```bash
-cp -r aws-ses-mailer-skill/openclaw ~/.openclaw/skills/aws-ses-mailer
-cp -r aws-ses-mailer-skill/scripts ~/.openclaw/skills/aws-ses-mailer/scripts
+# Clone the repo
+git clone https://github.com/andasv/aws-ses-mailer-skill.git
+
+# Copy skill and scripts into OpenClaw
+mkdir -p ~/.openclaw/skills/aws-ses-mailer
+cp aws-ses-mailer-skill/openclaw/SKILL.md ~/.openclaw/skills/aws-ses-mailer/
+cp -r aws-ses-mailer-skill/scripts ~/.openclaw/skills/aws-ses-mailer/
+
+# Clean up
+rm -rf aws-ses-mailer-skill
 ```
 
-### Configuration
+### 2. Configure an AWS profile
 
-Add to `~/.openclaw/openclaw.json`:
+After completing the [AWS Setup](#aws-setup) steps above, configure a named AWS CLI profile with the access keys from step 3:
+
+```bash
+aws configure --profile ses-mailer
+```
+
+Enter the `AccessKeyId`, `SecretAccessKey`, and region (`us-east-2`) when prompted.
+
+> This ensures OpenClaw only uses the restricted SES-only profile, never your admin credentials.
+
+### 3. Configure openclaw.json
+
+Add the following to your `~/.openclaw/openclaw.json` (create the file if it doesn't exist):
 
 ```json
 {
@@ -84,15 +204,17 @@ Add to `~/.openclaw/openclaw.json`:
     "entries": {
       "aws-ses-mailer": {
         "env": {
-          "SES_FROM_ADDRESS": "sender@example.com",
-          "SES_AWS_REGION": "eu-west-1",
-          "AWS_PROFILE": "my-profile"
+          "SES_FROM_ADDRESS": "your-email@example.com",
+          "SES_AWS_REGION": "us-east-2",
+          "AWS_PROFILE": "ses-mailer"
         }
       }
     }
   }
 }
 ```
+
+Replace `SES_FROM_ADDRESS` with your verified SES sender email. The `AWS_PROFILE` must match the profile name from step 2.
 
 ### Usage
 

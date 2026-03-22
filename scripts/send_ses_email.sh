@@ -151,7 +151,7 @@ RESULT=$(aws ses send-email \
   --from "$SENDER" \
   --destination "$DEST" \
   --message "$MESSAGE" \
-  "${OPTIONAL_ARGS[@]}" \
+  ${OPTIONAL_ARGS[@]+"${OPTIONAL_ARGS[@]}"} \
   --output json 2>&1)
 
 if [[ $? -eq 0 ]]; then

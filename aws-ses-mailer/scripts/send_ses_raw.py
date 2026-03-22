@@ -159,6 +159,8 @@ def main():
     if profile:
         aws_cmd.extend(["--profile", profile])
 
+    aws_cmd.extend(["--source", from_addr])
+
     # Build destinations list (TO + CC + BCC)
     all_destinations = to_addrs + cc_addrs + bcc_addrs
     aws_cmd.extend(["--destinations"] + all_destinations)
